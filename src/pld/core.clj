@@ -1,7 +1,7 @@
 (ns pld.core
   (:require [clojure.string :as str]))
 
-(use '[clojure.string :only [index-of]]) ; import statement
+(use '[clojure.string :only [index-of lower-case]]) ; import statement
 
 ; very similar to global variables
 (def file-to-hash "Example.txt") ; this file should hold the values you are trying to hash
@@ -11,34 +11,42 @@
 ; returns the value of the char in the hash
 (defn find-char-in-hash [charToFind hashValues]
   (let [s (str charToFind)]
+    (if (= charToFind \newline) -2
     (if (false? (clojure.string/blank? s)) ; if false then char is an actual value
-      (index-of hashValues charToFind) -1)) ; if not found return -1
+      (index-of hashValues charToFind) -1))) ; if not found return -1
     )
 
 ; hashes the number
-(defn hashCharNumber [character]
-  (let [hashFile (slurp file-to-hash-from)] ; file to hash from
-    (mod (+ (find-char-in-hash character hashFile) 13) 26)))
+(defn hash-char-number [character]
+  (let [hashFile (slurp file-to-hash-from)]
+    (let [charNum (find-char-in-hash character hashFile)]
+      (if (> charNum 0)
+      (mod (+ charNum 13) 26)charNum))))
 
 ; hashes the character
-(defn hashChar [hashedCharNumber]
+(defn hash-char [hashedCharNumber]
   (let [hashValues (slurp file-to-hash-from)]
-    (if (false? (= hashedCharNumber 12)) ; value 12 is a \n
-      (get hashValues hashedCharNumber) \newline)))
+    (if (false? (= hashedCharNumber -2)) ; if not newline
+      (if (false? (= hashedCharNumber -1)) ; value 12 is space
+        (get hashValues hashedCharNumber) " ") \newline)))
+
+(defn clear-hashed-file [file] (with-open [w (clojure.java.io/writer file :append false)] ; will overwrite values already in file
+                             (.write w (str ""))))
 
 ; writes output to new file
 (defn hash-file [hashedPhrase]
-  (with-open [w (clojure.java.io/writer file-to-write-hash-to :append false)]
+  (with-open [w (clojure.java.io/writer file-to-write-hash-to :append true)] ; will append to values already in file
     (.write w (str hashedPhrase))))
 
-; reads the file and returns all the values after being hashed
-(defn readFile []
-  (let [strval (slurp file-to-hash)]
+; reads file line by line
+(defn read-file-line-hash []
+  (clear-hashed-file file-to-write-hash-to) ; empties out all contents of file FOR NEW HASH
+  (with-open [r (clojure.java.io/reader file-to-hash)]
+  (doseq [line (line-seq r)]
+    (let [newLineToHash (str (clojure.string/replace line #"\newline" " ") \newline)]
     (loop [i 0 result []]
-      (if (<= i (- (count strval) 1))
-        (recur (+ i 1) (conj result (hashChar (hashCharNumber (get strval i)))))result))))
+      (if (<= i (- (count newLineToHash) 1))
+        (recur (+ i 1) (conj result (hash-char (hash-char-number (get newLineToHash i))))) (hash-file (apply str result)))))))(slurp file-to-write-hash-to)) ; returns new hashed file
 
-; hashes the file and writes out the new file
-(hash-file (apply str (readFile)))
-
-(println (apply str (readFile)))
+; hashes each line and calls all functions
+(println (read-file-line-hash))
