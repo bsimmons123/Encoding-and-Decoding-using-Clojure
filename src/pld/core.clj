@@ -47,7 +47,7 @@
   (clear-hashed-file file-to-write-hash-to) ; empties out all contents of file FOR NEW HASH
   (with-open [r (clojure.java.io/reader file-to-hash)]
     (doseq [line (line-seq r)]
-      (let [newLineToHash (str (clojure.string/replace line #"\newline" " ") \newline)]
+      (let [newLineToHash (lower-case (str (clojure.string/replace line #"\newline" " ") \newline))]
         (loop [i 0 result []]
           (if (<= i (- (count newLineToHash) 1))
             (recur (+ i 1) (conj result (hash-char (hash-char-number (get newLineToHash i)))))
